@@ -51,7 +51,7 @@ while getopts ":ib:p:n:s:g:u:d:o:" o; do
 	    ;;
 	o)
 	    OUTPUT_PATH="${OPTARG}/"
-	    [[ -d $OUTPUT_PATH} ]] || error "Output path ${OUTPUT_PATH} does not exist"
+	    [[ -d $OPTARG} ]] || error "Output path ${OPTARG} does not exist"
 	    ;;
 	b)
 	    BAM=${OPTARG}
