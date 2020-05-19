@@ -8,6 +8,7 @@ UPSTREAM=1
 DOWNSTREAM=5
 SAMTOOLS_VERSION_REQUIRED=1.3.1
 PARALLEL_VERSION_REQUIRED=20130522
+OUTPUT_PATH=""
 
 
 # show usage if no option is provided
@@ -26,6 +27,8 @@ if [[ "$#" -eq 0 ]]; then
     echo >&2 "Required arguments:"
     echo >&2 "    -i         read SAM alignment from STDIN"
     echo >&2 "    -p FILE    BEDPE file of primer pair locations"
+    echo >&2 "Optional arguments:"
+    echo >&2 "    -o PATH    Write ouput files to this path (instead of the path of the input file)"
     echo >&2
     echo >&2 "Options for either mode:"
     echo >&2 "    -n INT     number of threads for clipprimer.pl and samtools sort [$NTHREAD]"
@@ -41,10 +44,14 @@ function error {
     exit 1
 }
 
-while getopts ":ib:p:n:s:g:u:d:" o; do
+while getopts ":ib:p:n:s:g:u:d:o:" o; do
     case "${o}" in
 	i)
 	    PIPE=1
+	    ;;
+	o)
+	    OUTPUT_PATH="${OPTARG}/"
+	    [[ -d $OUTPUT_PATH} ]] || error "Output path ${OUTPUT_PATH} does not exist"
 	    ;;
 	b)
 	    BAM=${OPTARG}
@@ -81,6 +88,7 @@ while getopts ":ib:p:n:s:g:u:d:" o; do
 	    ;;
     esac
 done
+
 shift $((OPTIND-1))
 
 # assert (either BAM file or PIPE mode, but not both) and BEDPE are defined
@@ -105,5 +113,5 @@ else
     SAMTOOLS_VERSION=`"$SAMTOOLS" --version-only`
     [ "$(version "$SAMTOOLS_VERSION")" -lt "$(version "$SAMTOOLS_VERSION_REQUIRED")" ] && error "SAMtools version ($SAMTOOLS_VERSION) is not supported (supported version: at least $SAMTOOLS_VERSION_REQUIRED)."
 
-    "$SAMTOOLS" collate -O --output-fmt SAM "$BAM" "${BAMbn}.sort1" | "$SCRIPT_DIR"/injectseparator.pl | "$PARALLEL" -j "$NTHREAD" --keep-order --remove-rec-sep --pipe --remove-rec-sep --recend '__\n' --block 10M "$SCRIPT_DIR/clipprimer.pl --in $BEDPE --upstream $UPSTREAM --downstream $DOWNSTREAM" | "$SAMTOOLS" sort -T "${BAMbn}.sort2" -@ "$NTHREAD" > "${BAMbn%.bam}.primerclipped.bam" && "$SAMTOOLS" index "${BAMbn%.bam}.primerclipped.bam"
+    "$SAMTOOLS" collate -O --output-fmt SAM "$BAM" "${BAMbn}.sort1" | "$SCRIPT_DIR"/injectseparator.pl | "$PARALLEL" -j "$NTHREAD" --keep-order --remove-rec-sep --pipe --remove-rec-sep --recend '__\n' --block 10M "$SCRIPT_DIR/clipprimer.pl --in $BEDPE --upstream $UPSTREAM --downstream $DOWNSTREAM" | "$SAMTOOLS" sort -T "${BAMbn}.sort2" -@ "$NTHREAD" > "${OUTPUT_PATH}${BAMbn%.bam}.primerclipped.bam" && "$SAMTOOLS" index "${OUTPUT_PATH}${BAMbn%.bam}.primerclipped.bam"
 fi
